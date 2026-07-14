@@ -202,7 +202,7 @@ class RegistroService {
                 .setAccentColor(0x75F5E9)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        '<:SimGVRPNL:> **Registro Aprovado**\n' +
+                        '<:SimGVRPNL:1228154618048155701> **Registro Aprovado**\n' +
                         '-# <:white_dot:1373337479721123870> <:GVNL:1391202082920595556> LOG · WL · GVRPNL'
                     )
                 )

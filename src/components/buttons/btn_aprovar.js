@@ -82,7 +82,7 @@ module.exports = {
                 .setAccentColor(0x75F5E9)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        '<:SimGVRPNL:> **Registro Aprovado** <:white_dot:1373337479721123870> <:GVNL:1391202082920595556>\n' +
+                        '<:SimGVRPNL:1228154618048155701> **Registro Aprovado** <:white_dot:1373337479721123870> <:GVNL:1391202082920595556>\n' +
                         '-# Ação registrada pelo sistema de whitelist'
                     )
                 )
@@ -93,7 +93,7 @@ module.exports = {
                     new TextDisplayBuilder().setContent(
                         `<:MembrosGVRPNL:1223380937698443324> **Jogador:** <@${registroAtualizado.discordId}>\n` +
                         `<:valdotsmall:1392947288879665244> **Personagem:** ${registroAtualizado.nomePersonagem}\n` +
-                        `<:SimGVRPNL:> **Aprovado por:** <@${interaction.user.id}>\n\n` +
+                        `<:SimGVRPNL:1228154618048155701> **Aprovado por:** <@${interaction.user.id}>\n\n` +
                         `-# <:SairGVRPNL:1228154685622583297> Jogador notificado via DM e cargo atualizado.`
                     )
                 );

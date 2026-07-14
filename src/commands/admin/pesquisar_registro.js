@@ -65,7 +65,7 @@ module.exports = {
 
             const statusLabel = isPendente
                 ? '<:tempo_gvrpnl:1466937443545780437> **Status:** `PENDENTE — aguardando avaliação da staff`'
-                : '<:SimGVRPNL:> **Status:** `APROVADO`';
+                : '<:SimGVRPNL:1228154618048155701> **Status:** `APROVADO`';
 
             const containerResultado = new ContainerBuilder()
                 .setAccentColor(isPendente ? 0x6E4D5F : 0x3C166C)

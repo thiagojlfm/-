@@ -1,8 +1,10 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
 
 module.exports = {
-    name: 'setupregistro',
-    description: 'Envia o painel de registro para os cidadãos.',
+    data: new SlashCommandBuilder()
+        .setName('setupregistro')
+        .setDescription('Envia o painel de registro para os cidadãos.')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
     async execute(interaction) {
         try {
             await interaction.deferReply({ ephemeral: true });
