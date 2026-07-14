@@ -1,4 +1,4 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const RegistroService = require('../../services/RegistroService');
 
 module.exports = {
@@ -48,13 +48,27 @@ module.exports = {
             .setAccentColor(0x6E4D5F)
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    '# Novo Registro para Avaliação\n\n' +
-                    `**ID do Registro:** ${registro.id}\n` +
-                    `**Discord ID:** <@${interaction.user.id}>\n` +
-                    `**Roblox:** ${nickRoblox} (@${userRoblox})\n` +
-                    `**Personagem:** ${nomePersonagem}\n` +
-                    `**Idade:** ${idade}\n` +
-                    `**Local de Nasc.:** ${localNascimento}`
+                    '<:tempo_gvrpnl:1466937443545780437> **Nova solicitação de registro**\n' +
+                    '-# <:white_dot:1373337479721123870> <:GVNL:1391202082920595556> WL · GVRPNL — Aguardando avaliação'
+                )
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `<:MembrosGVRPNL:1223380937698443324> **Jogador:** <@${interaction.user.id}>\n` +
+                    `<:valdotsmall:1392947288879665244> **Nick Roblox:** \`${nickRoblox}\` (\`@${userRoblox}\`)\n` +
+                    `<:rpc2:> **Personagem:** \`${nomePersonagem}\`\n` +
+                    `<:info:1373983629746638938> **Idade:** \`${idade} anos\` <:white_dot:1373337479721123870> **Origem:** \`${localNascimento}\``
+                )
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `-# <:lock_gvrpnl:1466937465674792990> ID do registro: \`${registro.id}\``
                 )
             )
             .addActionRowComponents(

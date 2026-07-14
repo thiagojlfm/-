@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
+const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 
 const dataPath = path.join(__dirname, '..', 'data', 'registros.json');
 
@@ -154,36 +154,104 @@ class RegistroService {
         return registro;
     }
 
-   static async registrarLog(client, tipo, dados) {
+    static async registrarLog(client, tipo, dados) {
         const canalLogs = client.channels.cache.get(process.env.LOGS_CHANNEL_ID);
         if (!canalLogs) return;
 
-        let cor, titulo, corpo;
-
-        // Formatação padronizada do bloco do Roblox para reutilização
-       const infoRoblox = `**Roblox:** \`${dados.nickRoblox}\` (\`@${dados.userRoblox}\`)`;
+        let logContainer;
+        const infoRoblox = `<:valdotsmall:1392947288879665244> **Roblox:** \`${dados.nickRoblox}\` (\`@${dados.userRoblox}\`)`;
 
         if (tipo === 'CRIADO') {
-    cor = 0x3120F2;
-    titulo = '# [LOG] Novo Registro Solicitado';
-    corpo = `**ID:** \`${dados.id}\`\n**Usuário:** <@${dados.discordId}>\n${infoRoblox}\n**Personagem:** \`${dados.nomePersonagem}\`\n**Idade:** \`${dados.idade}\`\n**Local de Nasc.:** \`${dados.localNascimento}\``;
-} else if (tipo === 'APROVADO') {
-    cor = 0x75F5E9;
-    titulo = '# [LOG] Registro Aprovado';
-    corpo = `**ID:** \`${dados.id}\`\n**Usuário:** <@${dados.discordId}>\n${infoRoblox}\n**Personagem:** \`${dados.nomePersonagem}\`\n**SSN Gerado:** \`${dados.ssn}\`\n**Staff:** <@${dados.staffResponsavel}>`;
-} else if (tipo === 'REPROVADO') {
-    cor = 0xFF59A2;
-    titulo = '# [LOG] Registro Reprovado';
-    corpo = `**ID:** \`${dados.id}\`\n**Usuário:** <@${dados.discordId}>\n${infoRoblox}\n**Personagem:** \`${dados.nomePersonagem}\`\n**Motivo:** \`${dados.motivoReprovacao}\`\n**Staff:** <@${dados.staffResponsavel}>`;
-}
+            logContainer = new ContainerBuilder()
+                .setAccentColor(0x3120F2)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        '<:tempo_gvrpnl:1466937443545780437> **Novo Registro Solicitado**\n' +
+                        '-# <:white_dot:1373337479721123870> <:GVNL:1391202082920595556> LOG · WL · GVRPNL'
+                    )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `<:MembrosGVRPNL:1223380937698443324> **Usuário:** <@${dados.discordId}>\n` +
+                        `${infoRoblox}\n` +
+                        `<:rpc2:> **Personagem:** \`${dados.nomePersonagem}\`\n` +
+                        `<:info:1373983629746638938> **Idade:** \`${dados.idade} anos\` <:white_dot:1373337479721123870> **Origem:** \`${dados.localNascimento}\``
+                    )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `-# <:lock_gvrpnl:1466937465674792990> ID: \`${dados.id}\``
+                    )
+                );
 
-        const logContainer = new ContainerBuilder()
-            .setAccentColor(cor)
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`${titulo}\n\n${corpo}`)
-            );
+        } else if (tipo === 'APROVADO') {
+            logContainer = new ContainerBuilder()
+                .setAccentColor(0x75F5E9)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        '<:SimGVRPNL:> **Registro Aprovado**\n' +
+                        '-# <:white_dot:1373337479721123870> <:GVNL:1391202082920595556> LOG · WL · GVRPNL'
+                    )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `<:MembrosGVRPNL:1223380937698443324> **Usuário:** <@${dados.discordId}>\n` +
+                        `${infoRoblox}\n` +
+                        `<:rpc2:> **Personagem:** \`${dados.nomePersonagem}\`\n` +
+                        `<:lock_gvrpnl:1466937465674792990> **SSN Gerado:** \`${dados.ssn}\`\n` +
+                        `<:MembrosGVRPNL:1223380937698443324> **Aprovado por:** <@${dados.staffResponsavel}>`
+                    )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `-# <:lock_gvrpnl:1466937465674792990> ID: \`${dados.id}\``
+                    )
+                );
 
-        await canalLogs.send({ 
+        } else if (tipo === 'REPROVADO') {
+            logContainer = new ContainerBuilder()
+                .setAccentColor(0xFF59A2)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        '<:NoGVRPNL:1223380966924484650> **Registro Reprovado**\n' +
+                        '-# <:white_dot:1373337479721123870> <:GVNL:1391202082920595556> LOG · WL · GVRPNL'
+                    )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `<:MembrosGVRPNL:1223380937698443324> **Usuário:** <@${dados.discordId}>\n` +
+                        `${infoRoblox}\n` +
+                        `<:rpc2:> **Personagem:** \`${dados.nomePersonagem}\`\n` +
+                        `<:lock_gvrpnl:1466937465674792990> **Reprovado por:** <@${dados.staffResponsavel}>`
+                    )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `<:info:1373983629746638938> **Motivo:** ${dados.motivoReprovacao}\n\n` +
+                        `-# <:lock_gvrpnl:1466937465674792990> ID: \`${dados.id}\``
+                    )
+                );
+        }
+
+        await canalLogs.send({
             components: [logContainer],
             flags: [MessageFlags.IsComponentsV2]
         }).catch(() => null);
