@@ -1,0 +1,26 @@
+{
+  "name": "gvrpnl-wl",
+  "version": "1.0.0",
+  "description": "Bot para gerenciar a WL do NL",
+  "main": "index.js",
+  "scripts": {
+    "test": "nil"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fosforobranco/wl-gvrpnl.git"
+  },
+  "keywords": [
+    "wl"
+  ],
+  "author": "c0erus",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fosforobranco/wl-gvrpnl/issues"
+  },
+  "homepage": "https://github.com/fosforobranco/wl-gvrpnl#readme",
+  "dependencies": {
+    "discord.js": "^14.26.5",
+    "dotenv": "^17.4.2"
+  }
+}
