@@ -1,4 +1,4 @@
-const { ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
+const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const RegistroService = require('../../services/RegistroService');
 
 module.exports = {
@@ -29,9 +29,28 @@ module.exports = {
                     .setAccentColor(0xFF59A2)
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
-                            '# Registro Reprovado\n\n' +
-                            `**Motivo:** ${motivo}\n\n` +
-                            'Você pode preencher o formulário novamente.'
+                            '<:GVNL:1391202082920595556> **WL · GVRPNL**\n' +
+                            '-# <:white_dot:1373337479721123870> Sistema de Whitelist'
+                        )
+                    )
+                    .addSeparatorComponents(
+                        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                    )
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(
+                            '<:NoGVRPNL:1223380966924484650> Eita... desta vez não rolou.\n\n' +
+                            'Sua solicitação passou pela equipe de staff e infelizmente **não foi aprovada**. Mas calma, isso não significa o fim — acontece mais do que você imagina!\n\n' +
+                            `<:info:1373983629746638938> **O que o staff observou:**\n> ${motivo}`
+                        )
+                    )
+                    .addSeparatorComponents(
+                        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                    )
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(
+                            '<:FogueteGVRPNL:1240803507028627527> Revisa o ponto acima, ajusta sua ficha e **tenta de novo** — a gente quer te ver aqui dentro!\n' +
+                            '<:DvidaGVRPNL:1223381990162829393> Surgiu alguma dúvida? Abre um ticket, a equipe tá aqui pra ajudar.\n\n' +
+                            '-# <:tempo_gvrpnl:1466937443545780437> Até breve!'
                         )
                     );
 
@@ -45,10 +64,30 @@ module.exports = {
 
             // Cria um contêiner limpo para substituir o painel antigo
             const containerStaff = new ContainerBuilder()
-                .setAccentColor(0xFF59A2) // Cor de reprovação
+                .setAccentColor(0xFF59A2)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `# Registro Reprovado\n\n**Personagem:** ${registroAtualizado.nomePersonagem}\n**Usuário:** <@${registroAtualizado.discordId}>\n**Reprovado por:** <@${interaction.user.id}>\n**Motivo:** ${motivo}`
+                        '<:NoGVRPNL:1223380966924484650> **Registro Reprovado**\n' +
+                        '-# <:white_dot:1373337479721123870> <:GVNL:1391202082920595556> WL · GVRPNL'
+                    )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `<:MembrosGVRPNL:1223380937698443324> **Jogador:** <@${registroAtualizado.discordId}>\n` +
+                        `<:valdotsmall:1392947288879665244> **Personagem:** ${registroAtualizado.nomePersonagem}\n` +
+                        `<:lock_gvrpnl:1466937465674792990> **Reprovado por:** <@${interaction.user.id}>`
+                    )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `<:info:1373983629746638938> **Motivo:**\n> ${motivo}\n\n` +
+                        '-# <:SairGVRPNL:1228154685622583297> Jogador notificado via DM — pode submeter um novo registro.'
                     )
                 );
 
