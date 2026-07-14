@@ -79,10 +79,22 @@ module.exports = {
 
             // Cria um contêiner limpo para substituir o painel antigo
             const containerStaff = new ContainerBuilder()
-                .setAccentColor(382638) // Cor de aprovação
+                .setAccentColor(0x75F5E9)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `# Registro Aprovado\n\n**Personagem:** ${registroAtualizado.nomePersonagem}\n**Usuário:** <@${registroAtualizado.discordId}>\n**Aprovado por:** <@${interaction.user.id}>`
+                        '<:SimGVRPNL:> **Registro Aprovado** <:white_dot:1373337479721123870> <:GVNL:1391202082920595556>\n' +
+                        '-# Ação registrada pelo sistema de whitelist'
+                    )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `<:MembrosGVRPNL:1223380937698443324> **Jogador:** <@${registroAtualizado.discordId}>\n` +
+                        `<:valdotsmall:1392947288879665244> **Personagem:** ${registroAtualizado.nomePersonagem}\n` +
+                        `<:SimGVRPNL:> **Aprovado por:** <@${interaction.user.id}>\n\n` +
+                        `-# <:SairGVRPNL:1228154685622583297> Jogador notificado via DM e cargo atualizado.`
                     )
                 );
 

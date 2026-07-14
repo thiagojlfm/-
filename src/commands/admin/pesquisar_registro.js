@@ -21,9 +21,16 @@ module.exports = {
         const alvoResolvido = mencaoMatch ? mencaoMatch[1] : alvoInput.trim();
 
         try {
-            const registro = RegistroService._lerAprovados().find(
+            // Busca primeiro nos aprovados (JSON), depois nos pendentes (memória)
+            const registroAprovado = RegistroService._lerAprovados().find(
                 r => r.discordId === alvoResolvido || r.ssn === alvoResolvido
             );
+            const registroPendente = !registroAprovado
+                ? RegistroService.buscarPendentePorDiscordId(alvoResolvido)
+                : null;
+
+            const registro = registroAprovado || registroPendente;
+            const isPendente = !!registroPendente;
 
             if (!registro) {
                 const containerVazio = new ContainerBuilder()
@@ -39,8 +46,8 @@ module.exports = {
                     )
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
-                            `Não foi encontrado nenhum registro ativo para \`${alvoInput}\`.\n\n` +
-                            'O jogador pode ainda não ter sido aprovado, ou o SSN informado não existe no sistema.'
+                            `Não foi encontrado nenhum registro para \`${alvoInput}\`.\n\n` +
+                            'O jogador pode não ter enviado nenhum formulário ainda, ou o SSN informado não existe no sistema.'
                         )
                     );
 
@@ -56,8 +63,12 @@ module.exports = {
                 day: '2-digit', month: '2-digit', year: 'numeric'
             });
 
+            const statusLabel = isPendente
+                ? '<:tempo_gvrpnl:1466937443545780437> **Status:** `PENDENTE — aguardando avaliação da staff`'
+                : '<:SimGVRPNL:> **Status:** `APROVADO`';
+
             const containerResultado = new ContainerBuilder()
-                .setAccentColor(0x3C166C)
+                .setAccentColor(isPendente ? 0x6E4D5F : 0x3C166C)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         '<:lock_gvrpnl:1466937465674792990> **Consulta de Registro**\n' +
@@ -70,7 +81,8 @@ module.exports = {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `<:MembrosGVRPNL:1223380937698443324> **Jogador:** <@${registro.discordId}> — \`${nomeExibicao}\`\n` +
-                        `<:valdotsmall:1392947288879665244> **Roblox:** \`${registro.nickRoblox}\` (\`@${registro.userRoblox}\`)`
+                        `<:valdotsmall:1392947288879665244> **Roblox:** \`${registro.nickRoblox}\` (\`@${registro.userRoblox}\`)\n` +
+                        statusLabel
                     )
                 )
                 .addSeparatorComponents(
@@ -78,9 +90,9 @@ module.exports = {
                 )
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `<:rpc2:> **Personagem:** \`${registro.nomePersonagem}\`\n` +
-                        `<:info:1373983629746638938> **Idade:** \`${registro.idade} anos\` <:white_dot:1373337479721123870> **Origem:** \`${registro.localNascimento}\`\n` +
-                        `<:lock_gvrpnl:1466937465674792990> **SSN:** \`${registro.ssn}\``
+                        `<:rpc2:1500318320853782669> **Personagem:** \`${registro.nomePersonagem}\`\n` +
+                        `<:info:1373983629746638938> **Idade:** \`${registro.idade} anos\` <:white_dot:1373337479721123870> **Origem:** \`${registro.localNascimento}\`` +
+                        (registro.ssn ? `\n<:lock_gvrpnl:1466937465674792990> **SSN:** \`${registro.ssn}\`` : '')
                     )
                 )
                 .addSeparatorComponents(
@@ -88,7 +100,7 @@ module.exports = {
                 )
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `-# <:tempo_gvrpnl:1466937443545780437> Registrado em ${dataRegistro} <:white_dot:1373337479721123870> ID: \`${registro.id}\``
+                        `-# <:tempo_gvrpnl:1466937443545780437> Enviado em ${dataRegistro} <:white_dot:1373337479721123870> ID: \`${registro.id}\``
                     )
                 );
 

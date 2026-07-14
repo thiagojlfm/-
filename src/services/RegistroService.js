@@ -63,6 +63,13 @@ class RegistroService {
         return `${parte1}-${parte2}-${parte3}`;
     }
 
+    static buscarPendentePorDiscordId(discordId) {
+        for (const reg of solicitacoesPendentes.values()) {
+            if (reg.discordId === discordId) return reg;
+        }
+        return null;
+    }
+
     static isProcessing(registroId) {
         return processingInteractions.has(registroId.toString());
     }
@@ -177,7 +184,7 @@ class RegistroService {
                     new TextDisplayBuilder().setContent(
                         `<:MembrosGVRPNL:1223380937698443324> **Usuário:** <@${dados.discordId}>\n` +
                         `${infoRoblox}\n` +
-                        `<:rpc2:> **Personagem:** \`${dados.nomePersonagem}\`\n` +
+                        `<:rpc2:1500318320853782669>**Personagem:** \`${dados.nomePersonagem}\`\n` +
                         `<:info:1373983629746638938> **Idade:** \`${dados.idade} anos\` <:white_dot:1373337479721123870> **Origem:** \`${dados.localNascimento}\``
                     )
                 )
@@ -206,7 +213,7 @@ class RegistroService {
                     new TextDisplayBuilder().setContent(
                         `<:MembrosGVRPNL:1223380937698443324> **Usuário:** <@${dados.discordId}>\n` +
                         `${infoRoblox}\n` +
-                        `<:rpc2:> **Personagem:** \`${dados.nomePersonagem}\`\n` +
+                        `<:rpc2:1500318320853782669>**Personagem:** \`${dados.nomePersonagem}\`\n` +
                         `<:lock_gvrpnl:1466937465674792990> **SSN Gerado:** \`${dados.ssn}\`\n` +
                         `<:MembrosGVRPNL:1223380937698443324> **Aprovado por:** <@${dados.staffResponsavel}>`
                     )
@@ -236,7 +243,7 @@ class RegistroService {
                     new TextDisplayBuilder().setContent(
                         `<:MembrosGVRPNL:1223380937698443324> **Usuário:** <@${dados.discordId}>\n` +
                         `${infoRoblox}\n` +
-                        `<:rpc2:> **Personagem:** \`${dados.nomePersonagem}\`\n` +
+                        `<:rpc2:1500318320853782669>**Personagem:** \`${dados.nomePersonagem}\`\n` +
                         `<:lock_gvrpnl:1466937465674792990> **Reprovado por:** <@${dados.staffResponsavel}>`
                     )
                 )

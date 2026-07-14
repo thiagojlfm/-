@@ -59,7 +59,7 @@ module.exports = {
                 new TextDisplayBuilder().setContent(
                     `<:MembrosGVRPNL:1223380937698443324> **Jogador:** <@${interaction.user.id}>\n` +
                     `<:valdotsmall:1392947288879665244> **Nick Roblox:** \`${nickRoblox}\` (\`@${userRoblox}\`)\n` +
-                    `<:rpc2:> **Personagem:** \`${nomePersonagem}\`\n` +
+                    `<:rpc2:1500318320853782669>**Personagem:** \`${nomePersonagem}\`\n` +
                     `<:info:1373983629746638938> **Idade:** \`${idade} anos\` <:white_dot:1373337479721123870> **Origem:** \`${localNascimento}\``
                 )
             )
