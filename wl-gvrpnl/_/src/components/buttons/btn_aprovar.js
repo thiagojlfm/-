@@ -5,6 +5,8 @@ const {
     TextDisplayBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize,
+    MediaGalleryBuilder,
+    MediaGalleryItemBuilder,
     MessageFlags
 } = require('discord.js');
 
@@ -27,15 +29,16 @@ module.exports = {
                 return interaction.editReply({ content: 'Este registro não está mais pendente ou não foi encontrado.' }).catch(() => null);
             }
 
-            const registroAtualizado = await RegistroService.atualizarStatus(client, registroId, 'APROVADO', interaction.user.id);
-
             const membro = await interaction.guild.members.fetch(registro.discordId).catch(() => null);
-            if (membro) {
-                await membro.setNickname(registroAtualizado.nomePersonagem).catch(err => console.log(`[AVISO] Não foi possível alterar o apelido:`, err.message));
-                await membro.roles.add(process.env.ROLE_APROVADO_ID).catch(err => console.log(`[AVISO] Não foi possível adicionar cargo:`, err.message));
-                await membro.roles.remove(process.env.ROLE_REGISTRO_ID).catch(err => console.log(`[AVISO] Não foi possível remover cargo:`, err.message));
-                
-                const container = new ContainerBuilder()
+            if (!membro) {
+                return interaction.editReply({ content: 'Não foi possível encontrar o usuário no servidor.' }).catch(() => null);
+            }
+
+            // Reserva o SSN antes do DM para que a mensagem e o JSON tenham o mesmo valor.
+            registro.ssn = RegistroService.gerarSSN();
+            registro.staffResponsavel = interaction.user.id;
+            const registroAtualizado = registro;
+            const container = new ContainerBuilder()
                     .setAccentColor(382638)
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent("# <:wumpus_wow:1467288238271102986> REGISTRO APROVADO!")
@@ -50,9 +53,24 @@ module.exports = {
                     )
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
-                            `### <:emoji_112:1452477047850012762> Personagem\nSeu personagem foi cadastrado e seu nome no servidor foi alterado para **${registroAtualizado.nomePersonagem}**.`
+                            `### <:rpc2:1500318320853782669> REGISTRO\n` +
+                            `> <:valdotsmall:1392947288879665244> **Nome:** ${registroAtualizado.nomePersonagem}\n` +
+                            `> <:valdotsmall:1392947288879665244> **Idade:** ${registroAtualizado.idade}\n` +
+                            `> <:valdotsmall:1392947288879665244> **Local de nascimento:** ${registroAtualizado.localNascimento}\n` +
+                            `> <:valdotsmall:1392947288879665244> **SSN:** ${registroAtualizado.ssn}`
                         )
                     )
+                    .addMediaGalleryComponents(
+                        new MediaGalleryBuilder().addItems(
+                            new MediaGalleryItemBuilder()
+                                .setURL(registroAtualizado.avatarUrl)
+                                .setDescription('Avatar do usuário Roblox')
+                        )
+                    )
+                     .addSeparatorComponents(
+                        new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+                    )
+
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
                             "### <:rpc2:1500318320853782669> Antes de começar\nRecomendamos que leia atentamente todas as regras do servidor antes de iniciar sua jornada."
@@ -67,13 +85,25 @@ module.exports = {
                         )
                     );
 
+            try {
                 await membro.send({
                     components: [container],
                     flags: MessageFlags.IsComponentsV2
-                }).catch(err => {
-                    console.error('[ERRO DM] Falha ao enviar o container V2 para o usuário:', err);
                 });
+            } catch (error) {
+                console.error('[ERRO DM] Falha ao enviar aprovação:', error);
+                const dmFechada = error.code === 50007 || error.code === '50007';
+                return interaction.editReply({
+                    content: dmFechada
+                        ? '<:info:1373983629746638938> Suas DMs estão fechadas. Abra as mensagens diretas para receber a confirmação e tente novamente.'
+                        : 'Não foi possível enviar a confirmação por DM. Tente novamente em alguns instantes.'
+                }).catch(() => null);
             }
+
+            await RegistroService.atualizarStatus(client, registroId, 'APROVADO', interaction.user.id);
+            await membro.setNickname(registroAtualizado.nomePersonagem).catch(err => console.log(`[AVISO] Não foi possível alterar o apelido:`, err.message));
+            await membro.roles.add(process.env.ROLE_APROVADO_ID).catch(err => console.log(`[AVISO] Não foi possível adicionar cargo:`, err.message));
+            await membro.roles.remove(process.env.ROLE_REGISTRO_ID).catch(err => console.log(`[AVISO] Não foi possível remover cargo:`, err.message));
 
             await RegistroService.registrarLog(client, 'APROVADO', registroAtualizado);
 

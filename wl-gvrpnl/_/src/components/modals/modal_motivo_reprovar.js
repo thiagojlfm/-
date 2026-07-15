@@ -48,7 +48,7 @@ module.exports = {
                     )
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
-                            '<:FogueteGVRPNL:1240803507028627527> Revisa o ponto acima, ajusta sua ficha e **tenta de novo** — a gente quer te ver aqui dentro!\n' +
+                            '<:FogueteGVRPNL:1240803507028627527> Revise, o ponto acima, ajuste sua ficha e **tente novamente!** . Queremos te ver aqui no servidor!\n' +
                             '<:DvidaGVRPNL:1223381990162829393> Surgiu alguma dúvida? Abre um ticket, a equipe tá aqui pra ajudar.\n\n' +
                             '-# <:tempo_gvrpnl:1466937443545780437> Até breve!'
                         )

@@ -1,6 +1,14 @@
 const fs = require('fs');
 const path = require('path');
-const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
+const {
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    SeparatorSpacingSize,
+    MediaGalleryBuilder,
+    MediaGalleryItemBuilder,
+    MessageFlags
+} = require('discord.js');
 
 const dataPath = path.join(__dirname, '..', 'data', 'registros.json');
 
@@ -16,6 +24,74 @@ const solicitacoesPendentes = new Map();
 const cooldownsReprovacao = new Map(); // Guarda o timestamp da reprovação por usuário
 
 class RegistroService {
+
+    static adicionarAvatarAoContainer(container, avatarUrl) {
+        if (!avatarUrl) return container;
+
+        return container.addMediaGalleryComponents(
+            new MediaGalleryBuilder().addItems(
+                new MediaGalleryItemBuilder()
+                    .setURL(avatarUrl)
+                    .setDescription('Avatar do usuário Roblox')
+            )
+        );
+    }
+
+    static async buscarDadosRoblox(username) {
+        const normalizedUsername = String(username || '').trim();
+        if (!normalizedUsername) {
+            throw new Error('O username do Roblox não foi informado.');
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10_000);
+
+        try {
+            const userResponse = await fetch('https://users.roblox.com/v1/usernames/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usernames: [normalizedUsername], excludeBannedUsers: false }),
+                signal: controller.signal
+            });
+
+            if (!userResponse.ok) {
+                throw new Error(`A API de usuários do Roblox respondeu com HTTP ${userResponse.status}.`);
+            }
+
+            const userData = await userResponse.json();
+            const user = userData.data?.[0];
+            if (!user?.id) {
+                throw new Error('Username do Roblox não encontrado.');
+            }
+
+            const thumbnailResponse = await fetch(
+                `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=150x150&format=Png&isCircular=false`,
+                { signal: controller.signal }
+            );
+
+            if (!thumbnailResponse.ok) {
+                throw new Error(`A API de thumbnails do Roblox respondeu com HTTP ${thumbnailResponse.status}.`);
+            }
+
+            const thumbnailData = await thumbnailResponse.json();
+            const avatarUrl = thumbnailData.data?.[0]?.imageUrl;
+            if (!avatarUrl) {
+                throw new Error('A API do Roblox não retornou uma foto para esse usuário.');
+            }
+
+            return { userId: user.id, username: user.name, avatarUrl };
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                throw new Error('A consulta ao Roblox expirou. Tente novamente em alguns instantes.');
+            }
+            if (error instanceof TypeError) {
+                throw new Error('Não foi possível conectar às APIs do Roblox. Tente novamente em alguns instantes.');
+            }
+            throw error;
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
 
 // Remove um registro aprovado do JSON pelo Discord ID ou SSN
     static async deletarRegistro(discordIdOrSsn) {
@@ -49,7 +125,9 @@ class RegistroService {
     static _salvarAprovado(registro) {
         try {
             const registros = this._lerAprovados();
-            registros.push(registro);
+            // avatarUrl é usado somente nos containers e nunca é persistido no JSON.
+            const { avatarUrl, ...registroPersistido } = registro;
+            registros.push(registroPersistido);
             fs.writeFileSync(dataPath, JSON.stringify(registros, null, 4), 'utf-8');
         } catch (error) {
             console.error('[ERRO] Falha ao salvar registros.json:', error);
@@ -121,6 +199,8 @@ class RegistroService {
             nicknameOriginal: dados.nicknameOriginal,
             nickRoblox: dados.nickRoblox,
             userRoblox: dados.userRoblox,
+            robloxUserId: dados.robloxUserId,
+            avatarUrl: dados.avatarUrl,
             nomePersonagem: dados.nomePersonagem,
             idade: dados.idade,
             localNascimento: dados.localNascimento,
@@ -148,7 +228,7 @@ class RegistroService {
         registro.staffResponsavel = staffId;
         
         if (status === 'APROVADO') {
-            registro.ssn = this.gerarSSN();
+            registro.ssn = registro.ssn || this.gerarSSN();
             this._salvarAprovado(registro);
         } else if (status === 'REPROVADO') {
             registro.motivoReprovacao = motivo;
@@ -174,7 +254,7 @@ class RegistroService {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         '<:tempo_gvrpnl:1466937443545780437> **Novo Registro Solicitado**\n' +
-                        '-# <:white_dot:1373337479721123870> <:GVNL:1391202082920595556> LOG · WL · GVRPNL'
+                        '-# <:GVNL:1391202082920595556> LOG · WL · GVRPNL'
                     )
                 )
                 .addSeparatorComponents(
@@ -184,8 +264,8 @@ class RegistroService {
                     new TextDisplayBuilder().setContent(
                         `<:MembrosGVRPNL:1223380937698443324> **Usuário:** <@${dados.discordId}>\n` +
                         `${infoRoblox}\n` +
-                        `<:rpc2:1500318320853782669>**Personagem:** \`${dados.nomePersonagem}\`\n` +
-                        `<:info:1373983629746638938> **Idade:** \`${dados.idade} anos\` <:white_dot:1373337479721123870> **Origem:** \`${dados.localNascimento}\``
+                        `<:white_dot:1373337479721123870>**Personagem:** \`${dados.nomePersonagem}\`\n` +
+                        `<:white_dot:1373337479721123870> **Idade:** \`${dados.idade} anos\` <:white_dot:1373337479721123870> **Origem:** \`${dados.localNascimento}\``
                     )
                 )
                 .addSeparatorComponents(
@@ -199,11 +279,11 @@ class RegistroService {
 
         } else if (tipo === 'APROVADO') {
             logContainer = new ContainerBuilder()
-                .setAccentColor(0x75F5E9)
+                .setAccentColor(0x05eb18)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         '<:SimGVRPNL:1228154618048155701> **Registro Aprovado**\n' +
-                        '-# <:white_dot:1373337479721123870> <:GVNL:1391202082920595556> LOG · WL · GVRPNL'
+                        '-# <:GVNL:1391202082920595556> LOG · WL · GVRPNL'
                     )
                 )
                 .addSeparatorComponents(
@@ -213,8 +293,8 @@ class RegistroService {
                     new TextDisplayBuilder().setContent(
                         `<:MembrosGVRPNL:1223380937698443324> **Usuário:** <@${dados.discordId}>\n` +
                         `${infoRoblox}\n` +
-                        `<:rpc2:1500318320853782669>**Personagem:** \`${dados.nomePersonagem}\`\n` +
-                        `<:lock_gvrpnl:1466937465674792990> **SSN Gerado:** \`${dados.ssn}\`\n` +
+                        `<:white_dot:1373337479721123870>**Personagem:** \`${dados.nomePersonagem}\`\n` +
+                        `<:white_dot:1373337479721123870> **SSN Gerado:** \`${dados.ssn}\`\n` +
                         `<:MembrosGVRPNL:1223380937698443324> **Aprovado por:** <@${dados.staffResponsavel}>`
                     )
                 )
@@ -229,11 +309,11 @@ class RegistroService {
 
         } else if (tipo === 'REPROVADO') {
             logContainer = new ContainerBuilder()
-                .setAccentColor(0xFF59A2)
+                .setAccentColor(0x990000)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         '<:NoGVRPNL:1223380966924484650> **Registro Reprovado**\n' +
-                        '-# <:white_dot:1373337479721123870> <:GVNL:1391202082920595556> LOG · WL · GVRPNL'
+                        '-# <:GVNL:1391202082920595556> LOG · WL · GVRPNL'
                     )
                 )
                 .addSeparatorComponents(
@@ -243,8 +323,8 @@ class RegistroService {
                     new TextDisplayBuilder().setContent(
                         `<:MembrosGVRPNL:1223380937698443324> **Usuário:** <@${dados.discordId}>\n` +
                         `${infoRoblox}\n` +
-                        `<:rpc2:1500318320853782669>**Personagem:** \`${dados.nomePersonagem}\`\n` +
-                        `<:lock_gvrpnl:1466937465674792990> **Reprovado por:** <@${dados.staffResponsavel}>`
+                        `:<white_dot:1373337479721123870>**Personagem:** \`${dados.nomePersonagem}\`\n` +
+                        `<:white_dot:1373337479721123870> **Reprovado por:** <@${dados.staffResponsavel}>`
                     )
                 )
                 .addSeparatorComponents(
@@ -257,6 +337,8 @@ class RegistroService {
                     )
                 );
         }
+
+        this.adicionarAvatarAoContainer(logContainer, dados.avatarUrl);
 
         await canalLogs.send({
             components: [logContainer],

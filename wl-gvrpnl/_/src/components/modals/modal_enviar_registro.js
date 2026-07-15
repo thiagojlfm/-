@@ -26,17 +26,31 @@ module.exports = {
             });
         }
 
+        await interaction.deferReply({ ephemeral: true });
+
+        let dadosRoblox;
+        try {
+            dadosRoblox = await RegistroService.buscarDadosRoblox(userRoblox);
+        } catch (error) {
+            console.error('[ERRO ROBLOX] Falha ao consultar usuário/avatar:', error);
+            return interaction.editReply({
+                content: `Não foi possível validar o username do Roblox: ${error.message}`
+            });
+        }
+
         const registro = await RegistroService.criarRegistro(client, {
             discordId: interaction.user.id,
             nicknameOriginal: interaction.member.displayName,
             nickRoblox,
             userRoblox,
+            robloxUserId: dadosRoblox.userId,
+            avatarUrl: dadosRoblox.avatarUrl,
             nomePersonagem,
             idade: idade.toString(),
             localNascimento
         });
 
-        await interaction.reply({ 
+        await interaction.editReply({
             content: 'Seu registro foi enviado com sucesso. Aguarde a análise da equipe.\n\nAviso: Todos os dados preenchidos aqui são estritamente fictícios e utilizados apenas para a criação do seu personagem dentro do servidor.', 
             ephemeral: true 
         });
@@ -49,7 +63,7 @@ module.exports = {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     '<:tempo_gvrpnl:1466937443545780437> **Nova solicitação de registro**\n' +
-                    '-# <:white_dot:1373337479721123870> <:GVNL:1391202082920595556> WL · GVRPNL — Aguardando avaliação'
+                    '-# <:GVNL:1391202082920595556> WL · GVRPNL — Aguardando avaliação'
                 )
             )
             .addSeparatorComponents(
@@ -59,8 +73,8 @@ module.exports = {
                 new TextDisplayBuilder().setContent(
                     `<:MembrosGVRPNL:1223380937698443324> **Jogador:** <@${interaction.user.id}>\n` +
                     `<:valdotsmall:1392947288879665244> **Nick Roblox:** \`${nickRoblox}\` (\`@${userRoblox}\`)\n` +
-                    `<:rpc2:1500318320853782669>**Personagem:** \`${nomePersonagem}\`\n` +
-                    `<:info:1373983629746638938> **Idade:** \`${idade} anos\` <:white_dot:1373337479721123870> **Origem:** \`${localNascimento}\``
+                    `<:valdotsmall:1392947288879665244>**Personagem:** \`${nomePersonagem}\`\n` +
+                    `<:info:1373983629746638938> **Idade:** \`${idade} anos\` <:valdotsmall:1392947288879665244>**Origem:** \`${localNascimento}\``
                 )
             )
             .addSeparatorComponents(
