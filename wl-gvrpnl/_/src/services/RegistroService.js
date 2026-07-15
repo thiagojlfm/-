@@ -241,6 +241,28 @@ class RegistroService {
         return registro;
     }
 
+    static editarRegistro(discordIdOrSsn, campos) {
+        try {
+            const registros = this._lerAprovados();
+            const index = registros.findIndex(r => r.discordId === discordIdOrSsn || r.ssn === discordIdOrSsn);
+
+            if (index === -1) return null;
+
+            const camposPermitidos = ['nomePersonagem', 'idade', 'localNascimento', 'nickRoblox', 'userRoblox'];
+            for (const [campo, valor] of Object.entries(campos)) {
+                if (camposPermitidos.includes(campo) && valor !== null && valor !== undefined) {
+                    registros[index][campo] = valor;
+                }
+            }
+
+            fs.writeFileSync(dataPath, JSON.stringify(registros, null, 4), 'utf-8');
+            return registros[index];
+        } catch (error) {
+            console.error('[ERRO] Falha ao editar registro:', error);
+            throw error;
+        }
+    }
+
     static async registrarLog(client, tipo, dados) {
         const canalLogs = client.channels.cache.get(process.env.LOGS_CHANNEL_ID);
         if (!canalLogs) return;
