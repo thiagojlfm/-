@@ -147,8 +147,10 @@ client.on('interactionCreate', async interaction => {
 });
 
 // Evento disparado quando o bot se conecta com sucesso
-client.once('clientReady', () => {
+client.once('clientReady', async () => {
     console.log(`\n[BOT] Online com sucesso como: ${client.user.tag}`);
+    const RegistroService = require('./src/services/RegistroService');
+    await RegistroService.sincronizarBackups(client);
 });
 
 // Evento disparado automaticamente toda vez que um membro sai do servidor

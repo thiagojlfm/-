@@ -11,12 +11,16 @@ const {
 } = require('discord.js');
 
 const dataPath = path.join(__dirname, '..', 'data', 'registros.json');
+const backupIdsPath = path.join(__dirname, '..', 'data', 'backup_ids.json');
 
 if (!fs.existsSync(path.dirname(dataPath))) {
     fs.mkdirSync(path.dirname(dataPath), { recursive: true });
 }
 if (!fs.existsSync(dataPath)) {
     fs.writeFileSync(dataPath, JSON.stringify([], null, 4));
+}
+if (!fs.existsSync(backupIdsPath)) {
+    fs.writeFileSync(backupIdsPath, JSON.stringify([], null, 4));
 }
 
 const processingInteractions = new Set();
@@ -230,6 +234,7 @@ class RegistroService {
         if (status === 'APROVADO') {
             registro.ssn = registro.ssn || this.gerarSSN();
             this._salvarAprovado(registro);
+            this._enviarBackupRegistro(client, registro).catch(() => null);
         } else if (status === 'REPROVADO') {
             registro.motivoReprovacao = motivo;
             // Define o início do cooldown de 5 minutos para o usuário reprovado
@@ -261,6 +266,95 @@ class RegistroService {
             console.error('[ERRO] Falha ao editar registro:', error);
             throw error;
         }
+    }
+
+    static _lerIdsBackup() {
+        try {
+            return JSON.parse(fs.readFileSync(backupIdsPath, 'utf-8'));
+        } catch {
+            return [];
+        }
+    }
+
+    static _marcarBackupEnviado(id) {
+        const ids = this._lerIdsBackup();
+        if (!ids.includes(id)) {
+            ids.push(id);
+            fs.writeFileSync(backupIdsPath, JSON.stringify(ids, null, 4), 'utf-8');
+        }
+    }
+
+    static async _enviarBackupRegistro(client, registro) {
+        const canal = client.channels.cache.get('1526964267734007890');
+        if (!canal) return;
+
+        const agora = new Date().toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            timeZone: 'America/Sao_Paulo'
+        });
+
+        const container = new ContainerBuilder()
+            .setAccentColor(0x3C166C)
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    '<:lock_gvrpnl:1466937465674792990> **Backup de Registro**\n' +
+                    `-# <:GVNL:1391202082920595556> WL · GVRPNL <:white_dot:1373337479721123870> ${agora}`
+                )
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `<:MembrosGVRPNL:1223380937698443324> **Jogador:** <@${registro.discordId}>\n` +
+                    `<:valdotsmall:1392947288879665244> **Roblox:** \`${registro.nickRoblox}\` (\`@${registro.userRoblox}\`)`
+                )
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `<:rpc2:1500318320853782669> **Personagem:** \`${registro.nomePersonagem}\`\n` +
+                    `<:info:1373983629746638938> **Idade:** \`${registro.idade} anos\` <:white_dot:1373337479721123870> **Origem:** \`${registro.localNascimento}\`\n` +
+                    `<:lock_gvrpnl:1466937465674792990> **SSN:** \`${registro.ssn}\``
+                )
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `-# <:tempo_gvrpnl:1466937443545780437> ID: \`${registro.id}\``
+                )
+            );
+
+        await canal.send({
+            components: [container],
+            flags: [MessageFlags.IsComponentsV2]
+        }).catch(err => console.error('[BACKUP] Falha ao enviar backup:', err.message));
+
+        this._marcarBackupEnviado(registro.id);
+    }
+
+    // Chamado no bot ready — sincroniza registros que ainda não foram enviados ao canal de backup
+    static async sincronizarBackups(client) {
+        const registros = this._lerAprovados();
+        const idsEnviados = this._lerIdsBackup();
+        const pendentes = registros.filter(r => !idsEnviados.includes(r.id));
+
+        if (pendentes.length === 0) return;
+
+        console.log(`[BACKUP] Sincronizando ${pendentes.length} registro(s) não enviado(s)...`);
+
+        for (const registro of pendentes) {
+            await this._enviarBackupRegistro(client, registro);
+            // Pequena pausa para não estourar o rate limit do Discord
+            await new Promise(res => setTimeout(res, 1000));
+        }
+
+        console.log('[BACKUP] Sincronização concluída.');
     }
 
     static async registrarLog(client, tipo, dados) {
