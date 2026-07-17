@@ -85,20 +85,14 @@ module.exports = {
                         )
                     );
 
-            try {
-                await membro.send({
-                    components: [container],
-                    flags: MessageFlags.IsComponentsV2
-                });
-            } catch (error) {
-                console.error('[ERRO DM] Falha ao enviar aprovação:', error);
-                const dmFechada = error.code === 50007 || error.code === '50007';
-                return interaction.editReply({
-                    content: dmFechada
-                        ? '<:info:1373983629746638938> Suas DMs estão fechadas. Abra as mensagens diretas para receber a confirmação e tente novamente.'
-                        : 'Não foi possível enviar a confirmação por DM. Tente novamente em alguns instantes.'
-                }).catch(() => null);
-            }
+            let dmEnviada = true;
+            await membro.send({
+                components: [container],
+                flags: MessageFlags.IsComponentsV2
+            }).catch(err => {
+                console.log(`[AVISO DM] Não foi possível enviar DM para ${membro.user.tag}: ${err.message}`);
+                dmEnviada = false;
+            });
 
             await RegistroService.atualizarStatus(client, registroId, 'APROVADO', interaction.user.id);
             await membro.setNickname(registroAtualizado.nomePersonagem).catch(err => console.log(`[AVISO] Não foi possível alterar o apelido:`, err.message));
@@ -134,7 +128,11 @@ module.exports = {
                 flags: MessageFlags.IsComponentsV2
             }).catch(() => null);
 
-            await interaction.editReply({ content: 'Registro aprovado com sucesso.' }).catch(() => null);
+            await interaction.editReply({
+                content: dmEnviada
+                    ? '<:SimGVRPNL:1228154618048155701> Registro aprovado com sucesso.'
+                    : '<:SimGVRPNL:1228154618048155701> Registro aprovado! <:NoGVRPNL:1223380966924484650> Não foi possível notificar o jogador por DM — DMs fechadas ou sem servidores mútuos. Avise manualmente.'
+            }).catch(() => null);
 
         } catch (error) {
             console.error('[ERRO] Falha no processo de aprovação:', error);
