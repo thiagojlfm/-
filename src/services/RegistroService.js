@@ -12,6 +12,7 @@ const {
 
 const dataPath = path.join(__dirname, '..', 'data', 'registros.json');
 const backupIdsPath = path.join(__dirname, '..', 'data', 'backup_ids.json');
+const pendentesPath = path.join(__dirname, '..', 'data', 'pendentes.json');
 
 if (!fs.existsSync(path.dirname(dataPath))) {
     fs.mkdirSync(path.dirname(dataPath), { recursive: true });
@@ -22,10 +23,26 @@ if (!fs.existsSync(dataPath)) {
 if (!fs.existsSync(backupIdsPath)) {
     fs.writeFileSync(backupIdsPath, JSON.stringify([], null, 4));
 }
+if (!fs.existsSync(pendentesPath)) {
+    fs.writeFileSync(pendentesPath, JSON.stringify([], null, 4));
+}
 
 const processingInteractions = new Set();
+const cooldownsReprovacao = new Map();
+
+// Carrega pendentes do disco ao iniciar — sobrevive a restarts
 const solicitacoesPendentes = new Map();
-const cooldownsReprovacao = new Map(); // Guarda o timestamp da reprovação por usuário
+try {
+    const pendentesRaw = JSON.parse(fs.readFileSync(pendentesPath, 'utf-8'));
+    for (const reg of pendentesRaw) {
+        solicitacoesPendentes.set(reg.id, reg);
+    }
+    if (pendentesRaw.length > 0) {
+        console.log(`[PENDENTES] ${pendentesRaw.length} registro(s) pendente(s) recarregado(s) do disco.`);
+    }
+} catch {
+    console.log('[PENDENTES] Nenhum pendente anterior encontrado.');
+}
 
 class RegistroService {
 
@@ -126,6 +143,15 @@ class RegistroService {
         }
     }
 
+    static _salvarPendentes() {
+        try {
+            const lista = Array.from(solicitacoesPendentes.values());
+            fs.writeFileSync(pendentesPath, JSON.stringify(lista, null, 4), 'utf-8');
+        } catch (error) {
+            console.error('[ERRO] Falha ao salvar pendentes.json:', error);
+        }
+    }
+
     static _salvarAprovado(registro) {
         try {
             const registros = this._lerAprovados();
@@ -216,7 +242,8 @@ class RegistroService {
         };
 
         solicitacoesPendentes.set(registroId, novoRegistro);
-        
+        this._salvarPendentes();
+
         return novoRegistro;
     }
 
@@ -242,6 +269,7 @@ class RegistroService {
         }
 
         solicitacoesPendentes.delete(registroId.toString());
+        this._salvarPendentes();
 
         return registro;
     }
