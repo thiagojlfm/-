@@ -10,5 +10,5 @@ module.exports = {
     CENTRAL_INFO_CHANNEL_ID: '1526965923351757020',
 
     /** Canal da staff para avaliar solicitações de Whitelist */
-    STAFF_WL_PANEL_CHANNEL_ID: '1526965923351757020'
+    STAFF_WL_PANEL_CHANNEL_ID: '1528889198445330564'
 };
