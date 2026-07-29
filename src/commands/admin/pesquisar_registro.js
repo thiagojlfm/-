@@ -1,38 +1,65 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
+const {
+    SlashCommandBuilder,
+    PermissionFlagsBits,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    SeparatorSpacingSize,
+    MessageFlags
+} = require('discord.js');
 const RegistroService = require('../../services/RegistroService');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('pesquisar_registro')
-        .setDescription('Consulta o registro ativo de um jogador no sistema.')
+        .setDescription('Consulta o registro de um jogador no sistema.')
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+        .addUserOption(option =>
+            option
+                .setName('usuario')
+                .setDescription('Mencione o usuário do Discord.')
+                .setRequired(false)
+        )
         .addStringOption(option =>
             option
-                .setName('alvo')
-                .setDescription('Mencione o usuário ou digite o SSN do personagem.')
-                .setRequired(true)
+                .setName('ssn')
+                .setDescription('SSN do personagem.')
+                .setRequired(false)
+        )
+        .addStringOption(option =>
+            option
+                .setName('roblox')
+                .setDescription('Username ou nickname do Roblox.')
+                .setRequired(false)
         ),
 
     async execute(interaction, client) {
         await interaction.deferReply({ ephemeral: true }).catch(() => null);
 
-        const alvoInput = interaction.options.getString('alvo');
-        const mencaoMatch = alvoInput.match(/^<@!?(\d+)>$/);
-        const alvoResolvido = mencaoMatch ? mencaoMatch[1] : alvoInput.trim();
+        const usuario = interaction.options.getUser('usuario');
+        const ssnInput = interaction.options.getString('ssn')?.trim() || null;
+        const robloxInput = interaction.options.getString('roblox')?.trim() || null;
+
+        if (!usuario && !ssnInput && !robloxInput) {
+            return interaction.editReply({
+                content: 'Informe **usuario** (menção), **ssn** ou **roblox** (username/nickname).'
+            }).catch(() => null);
+        }
+
+        const alvoLabel = usuario
+            ? `${usuario.tag} (<@${usuario.id}>)`
+            : ssnInput
+                ? `SSN \`${ssnInput}\``
+                : `Roblox \`${robloxInput}\``;
 
         try {
-            // Busca primeiro nos aprovados (JSON), depois nos pendentes (memória)
-            const registroAprovado = RegistroService._lerAprovados().find(
-                r => r.discordId === alvoResolvido || r.ssn === alvoResolvido
-            );
-            const registroPendente = !registroAprovado
-                ? RegistroService.buscarPendentePorDiscordId(alvoResolvido)
-                : null;
+            const encontrado = RegistroService.consultarRegistro({
+                discordId: usuario?.id || null,
+                ssn: ssnInput,
+                roblox: robloxInput
+            });
 
-            const registro = registroAprovado || registroPendente;
-            const isPendente = !!registroPendente;
-
-            if (!registro) {
+            if (!encontrado) {
                 const containerVazio = new ContainerBuilder()
                     .setAccentColor(0x6E4D5F)
                     .addTextDisplayComponents(
@@ -46,8 +73,8 @@ module.exports = {
                     )
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
-                            `Não foi encontrado nenhum registro para \`${alvoInput}\`.\n\n` +
-                            'O jogador pode não ter enviado nenhum formulário ainda, ou o SSN informado não existe no sistema.'
+                            `Não foi encontrado nenhum registro para ${alvoLabel}.\n\n` +
+                            'Tente menção do Discord, SSN ou username/nickname do Roblox.'
                         )
                     );
 
@@ -57,18 +84,35 @@ module.exports = {
                 }).catch(() => null);
             }
 
-            const membro = await interaction.guild.members.fetch(registro.discordId).catch(() => null);
-            const nomeExibicao = membro ? membro.displayName : `ID ${registro.discordId}`;
-            const dataRegistro = new Date(registro.createdAt).toLocaleDateString('pt-BR', {
-                day: '2-digit', month: '2-digit', year: 'numeric'
-            });
+            const { registro, isPendente, isArquivado } = encontrado;
 
-            const statusLabel = isPendente
-                ? '<:tempo_gvrpnl:1466937443545780437> **Status:** `PENDENTE — aguardando avaliação da staff`'
-                : '<:SimGVRPNL:1228154618048155701> **Status:** `APROVADO`';
+            const membro = await interaction.guild.members.fetch(registro.discordId).catch(() => null);
+            const nomeExibicao = membro
+                ? membro.displayName
+                : (usuario ? usuario.username : `ID ${registro.discordId}`);
+            const dataRegistro = registro.createdAt
+                ? new Date(registro.createdAt).toLocaleDateString('pt-BR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric'
+                })
+                : '—';
+
+            let statusLabel;
+            if (isPendente) {
+                statusLabel = '<:tempo_gvrpnl:1466937443545780437> **Status:** `PENDENTE: aguardando avaliação da staff`';
+            } else if (isArquivado && registro.motivoArquivo === 'DELETADO_STAFF') {
+                const det = registro.motivoDetalhe ? ` · motivo: \`${registro.motivoDetalhe}\`` : '';
+                statusLabel =
+                    '<:NoGVRPNL:1223380966924484650> **Status:** `DELETADO` (arquivado — use `/devolver_registro`)' +
+                    det;
+            } else if (isArquivado) {
+                statusLabel =
+                    '<:tempo_gvrpnl:1466937443545780437> **Status:** `ARQUIVADO` (saiu do servidor — use `/devolver_registro` ou aguarde o retorno)';
+            } else {
+                statusLabel = '<:SimGVRPNL:1228154618048155701> **Status:** `APROVADO`';
+            }
 
             const containerResultado = new ContainerBuilder()
-                .setAccentColor(isPendente ? 0x6E4D5F : 0x3C166C)
+                .setAccentColor(isPendente || isArquivado ? 0x6E4D5F : 0x3C166C)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         '<:lock_gvrpnl:1466937465674792990> **Consulta de Registro**\n' +
@@ -80,7 +124,7 @@ module.exports = {
                 )
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `<:MembrosGVRPNL:1223380937698443324> **Jogador:** <@${registro.discordId}> — \`${nomeExibicao}\`\n` +
+                        `<:MembrosGVRPNL:1223380937698443324> **Jogador:** <@${registro.discordId}> · \`${nomeExibicao}\`\n` +
                         `<:valdotsmall:1392947288879665244> **Roblox:** \`${registro.nickRoblox}\` (\`@${registro.userRoblox}\`)\n` +
                         statusLabel
                     )

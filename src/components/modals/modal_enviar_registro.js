@@ -1,15 +1,34 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const RegistroService = require('../../services/RegistroService');
+const WhitelistService = require('../../services/WhitelistService');
 
 module.exports = {
     customId: 'modal_enviar_registro',
     async execute(interaction, client, extractedId) {
         const nickRoblox = interaction.fields.getTextInputValue('input_nickname_roblox');
         const userRoblox = interaction.fields.getTextInputValue('input_username_roblox');
-        const nomePersonagem = interaction.fields.getTextInputValue('input_nome_personagem');
+        const nomePersonagem = RegistroService.formatarNomePersonagem(
+            interaction.fields.getTextInputValue('input_nome_personagem')
+        );
         const idadeRaw = interaction.fields.getTextInputValue('input_idade').trim();
         const localNascimento = interaction.fields.getTextInputValue('input_local_nascimento');
-        
+
+        // Gate: só quem tem WL aprovada pode enviar registro (mesmo se abriu o modal antes)
+        if (WhitelistService.buscarPendentePorDiscordId(interaction.user.id)) {
+            return interaction.reply({
+                content:
+                    'Sua **Whitelist** ainda está **pendente**. Aguarde a aprovação da staff antes de registrar.',
+                ephemeral: true
+            });
+        }
+        if (!WhitelistService.estaAprovado(interaction.user.id)) {
+            return interaction.reply({
+                content:
+                    'Você precisa ter a **Whitelist aprovada** para enviar o registro de personagem.',
+                ephemeral: true
+            });
+        }
+
         // Validação estrita de idade: deve ser número e maior ou igual a 18
         const idade = parseInt(idadeRaw, 10);
         if (isNaN(idade) || !/^\d+$/.test(idadeRaw)) {
@@ -63,7 +82,7 @@ module.exports = {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     '<:tempo_gvrpnl:1466937443545780437> **Nova solicitação de registro**\n' +
-                    '-# <:GVNL:1391202082920595556> WL · GVRPNL — Aguardando avaliação'
+                    '-# <:GVNL:1391202082920595556> WL · GVRPNL · Aguardando avaliação'
                 )
             )
             .addSeparatorComponents(

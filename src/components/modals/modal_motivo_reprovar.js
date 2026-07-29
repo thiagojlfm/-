@@ -39,7 +39,7 @@ module.exports = {
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
                             '<:NoGVRPNL:1223380966924484650> Eita... desta vez não rolou.\n\n' +
-                            'Sua solicitação passou pela equipe de staff e infelizmente **não foi aprovada**. Mas calma, isso não significa o fim — acontece mais do que você imagina!\n\n' +
+                            'Sua solicitação passou pela equipe de staff e infelizmente **não foi aprovada**. Mas calma, isso não significa o fim. Acontece mais do que você imagina!\n\n' +
                             `<:info:1373983629746638938> **O que o staff observou:**\n> ${motivo}`
                         )
                     )
@@ -87,7 +87,7 @@ module.exports = {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `<:info:1373983629746638938> **Motivo:**\n> ${motivo}\n\n` +
-                        '-# <:SairGVRPNL:1228154685622583297> Jogador notificado via DM — pode submeter um novo registro.'
+                        '-# <:SairGVRPNL:1228154685622583297> Jogador notificado via DM. Pode submeter um novo registro.'
                     )
                 );
 

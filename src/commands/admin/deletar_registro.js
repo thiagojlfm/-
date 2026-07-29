@@ -4,13 +4,19 @@ const RegistroService = require('../../services/RegistroService');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('deletar_registro')
-        .setDescription('Deleta o registro ativo de um jogador do banco de dados (CK ou reset).')
+        .setDescription('Remove o registro ativo (CK/reset). Fica arquivado e pode ser devolvido com /devolver_registro.')
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+        .addUserOption(option =>
+            option
+                .setName('usuario')
+                .setDescription('Mencione o usuário do Discord.')
+                .setRequired(false)
+        )
         .addStringOption(option =>
             option
-                .setName('alvo')
-                .setDescription('Mencione o usuário ou digite o SSN do personagem que deseja deletar.')
-                .setRequired(true)
+                .setName('ssn')
+                .setDescription('SSN do personagem que deseja deletar.')
+                .setRequired(false)
         )
         .addStringOption(option =>
             option
@@ -22,27 +28,27 @@ module.exports = {
     async execute(interaction, client) {
         await interaction.deferReply({ ephemeral: true }).catch(() => null);
 
-        const alvoInput = interaction.options.getString('alvo');
+        const usuario = interaction.options.getUser('usuario');
+        const ssn = interaction.options.getString('ssn')?.trim() || null;
         const motivo = interaction.options.getString('motivo');
 
-        if (!alvoInput) {
+        if (!usuario && !ssn) {
             return interaction.editReply({
-                content: 'Por favor, forneça um alvo válido (ID, menção ou SSN).'
+                content: 'Informe **usuario** (menção) ou **ssn**, além do **motivo**.'
             }).catch(() => null);
         }
 
-        // Extrai o ID apenas se o input for uma menção (<@123> ou <@!123>).
-        // Caso contrário (ID puro ou SSN no formato 123-45-6789), mantém o valor original,
-        // já que RegistroService.deletarRegistro busca por discordId OU ssn.
-        const mencaoMatch = alvoInput.match(/^<@!?(\d+)>$/);
-        const alvoResolvido = mencaoMatch ? mencaoMatch[1] : alvoInput.trim();
+        const alvoResolvido = usuario?.id || ssn;
 
         try {
-            const registroDeletado = await RegistroService.deletarRegistro(alvoResolvido);
+            const registroDeletado = await RegistroService.deletarRegistro(alvoResolvido, {
+                motivo,
+                staffId: interaction.user.id
+            });
 
             if (!registroDeletado) {
                 return interaction.editReply({
-                    content: 'Nenhum registro ativo foi encontrado com as informações fornecidas (ID ou SSN).'
+                    content: 'Nenhum registro foi encontrado com as informações fornecidas (usuário ou SSN).'
                 }).catch(() => null);
             }
 
@@ -57,9 +63,10 @@ module.exports = {
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
                             '# Registro Resetado\n\n' +
-                            `Seu personagem **${registroDeletado.nomePersonagem}** foi removido do sistema.\n` +
+                            `Seu personagem **${registroDeletado.nomePersonagem}** foi removido do sistema ativo.\n` +
                             `**Motivo:** ${motivo}\n\n` +
-                            'Se desejar criar um novo personagem, você já pode enviar um novo formulário no canal de registro.'
+                            'O cadastro ficou **arquivado**. Para criar outro personagem, a staff precisa **devolver** este registro ou liberar o slot. ' +
+                            'Não é possível enviar um novo formulário enquanto este personagem estiver deletado.'
                         )
                     );
 
@@ -69,7 +76,7 @@ module.exports = {
                 }).catch(() => null);
             }
 
-           const canalLogs = client.channels.cache.get(process.env.LOGS_CHANNEL_ID);
+            const canalLogs = client.channels.cache.get(process.env.LOGS_CHANNEL_ID);
             if (canalLogs) {
                 const logContainer = new ContainerBuilder()
                     .setAccentColor(0xFF0000)
@@ -81,7 +88,8 @@ module.exports = {
                             `**Personagem:** \`${registroDeletado.nomePersonagem}\`\n` +
                             `**SSN:** \`${registroDeletado.ssn}\`\n` +
                             `**Removido por:** <@${interaction.user.id}>\n` +
-                            `**Motivo:** \`${motivo}\``
+                            `**Motivo:** \`${motivo}\`\n\n` +
+                            '*Registro com status DELETADO (não apagado de vez). Staff pode devolver com `/devolver_registro`.*'
                         )
                     );
 
@@ -91,8 +99,17 @@ module.exports = {
                 }).catch(() => null);
             }
 
+            await RegistroService._enviarBackupJson(
+                client,
+                `delete/CK \`${registroDeletado.nomePersonagem}\``,
+                registroDeletado
+            ).catch(() => null);
+
             await interaction.editReply({
-                content: `O registro de **${registroDeletado.nomePersonagem}** foi deletado do sistema com sucesso e os cargos foram atualizados.`
+                content:
+                    `O registro de **${registroDeletado.nomePersonagem}** foi removido e os cargos atualizados.\n` +
+                    `Ele ficou **arquivado** (SSN \`${registroDeletado.ssn}\`, status DELETADO) e pode ser devolvido com \`/devolver_registro\`.\n` +
+                    `O jogador **não** pode abrir formulário novo até a staff devolver este cadastro.`
             }).catch(() => null);
 
         } catch (error) {

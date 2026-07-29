@@ -29,7 +29,9 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true }).catch(() => null);
 
         const usuarioAlvo = interaction.options.getUser('usuario');
-        const nomePersonagem = interaction.options.getString('nome_personagem');
+        const nomePersonagem = RegistroService.formatarNomePersonagem(
+            interaction.options.getString('nome_personagem')
+        );
         const nickRoblox = interaction.options.getString('nick_roblox');
         const userRoblox = interaction.options.getString('user_roblox');
         const localNascimento = interaction.options.getString('local');
@@ -45,10 +47,17 @@ module.exports = {
             return interaction.editReply({ content: 'Não foi possível encontrar esse usuário no servidor.' }).catch(() => null);
         }
 
-        // Verifica se já tem registro aprovado
-        const jaAprovado = RegistroService._lerAprovados().some(r => r.discordId === usuarioAlvo.id);
-        if (jaAprovado) {
-            return interaction.editReply({ content: 'Este usuário já possui um registro aprovado no sistema.' }).catch(() => null);
+        // Bloqueia se já tem personagem no sistema (ativo, arquivado ou deletado)
+        const existente = RegistroService.consultarRegistro({ discordId: usuarioAlvo.id });
+        if (existente && !existente.isPendente) {
+            const st = existente.registro.status || 'APROVADO';
+            return interaction.editReply({
+                content:
+                    `Este usuário já possui registro no sistema (**${existente.registro.nomePersonagem}**, status \`${st}\`).\n` +
+                    (existente.isArquivado
+                        ? 'Use `/devolver_registro` para reativar, se for o caso.'
+                        : 'Edite com `/editar_registro` ou delete com `/deletar_registro` se precisar resetar.')
+            }).catch(() => null);
         }
 
         try {
@@ -145,7 +154,7 @@ module.exports = {
             await interaction.editReply({
                 content: dmEnviada
                     ? `<:SimGVRPNL:1228154618048155701> Registro de **${nomePersonagem}** criado e aprovado com sucesso! SSN: \`${ssn}\``
-                    : `<:SimGVRPNL:1228154618048155701> Registro criado! SSN: \`${ssn}\` <:NoGVRPNL:1223380966924484650> Não foi possível notificar o jogador por DM — avise manualmente.`
+                    : `<:SimGVRPNL:1228154618048155701> Registro criado! SSN: \`${ssn}\` <:NoGVRPNL:1223380966924484650> Não foi possível notificar o jogador por DM. Avise manualmente.`
             }).catch(() => null);
 
         } catch (error) {

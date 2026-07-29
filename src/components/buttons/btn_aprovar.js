@@ -131,7 +131,7 @@ module.exports = {
             await interaction.editReply({
                 content: dmEnviada
                     ? '<:SimGVRPNL:1228154618048155701> Registro aprovado com sucesso.'
-                    : '<:SimGVRPNL:1228154618048155701> Registro aprovado! <:NoGVRPNL:1223380966924484650> Não foi possível notificar o jogador por DM — DMs fechadas ou sem servidores mútuos. Avise manualmente.'
+                    : '<:SimGVRPNL:1228154618048155701> Registro aprovado! <:NoGVRPNL:1223380966924484650> Não foi possível notificar o jogador por DM (DMs fechadas ou sem servidores mútuos). Avise manualmente.'
             }).catch(() => null);
 
         } catch (error) {

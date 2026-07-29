@@ -1,11 +1,44 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const RegistroService = require('../../services/RegistroService');
+const WhitelistService = require('../../services/WhitelistService');
+const { WL_PANEL_CHANNEL_ID } = require('../../config/channels');
+
+function mençãoCanalWl() {
+    const id = WL_PANEL_CHANNEL_ID;
+    return id ? `<#${id}>` : '#wl-panel';
+}
 
 module.exports = {
     customId: 'btn_iniciar_registro',
     async execute(interaction, client) {
-        // 1. Verifica se o usuário está sob o tempo de espera do Anti-Spam
-        const tempoRestante = RegistroService.obterTempoRestanteCooldown(interaction.user.id);
+        // 0. Fallback de resultado de WL se a DM falhou (mostra e encerra; próximo clique segue o fluxo)
+        const fallbackWl = WhitelistService.consumirFallback(interaction.user.id);
+        if (fallbackWl) {
+            return interaction.reply({ content: fallbackWl, ephemeral: true });
+        }
+
+        // 1. Whitelist obrigatória: só quem está APROVADO pode registrar
+        const discordId = interaction.user.id;
+        if (WhitelistService.buscarPendentePorDiscordId(discordId)) {
+            return interaction.reply({
+                content:
+                    'Sua **Whitelist** ainda está **pendente** de análise pela staff.\n' +
+                    'Aguarde a aprovação antes de registrar um personagem.',
+                ephemeral: true
+            });
+        }
+
+        if (!WhitelistService.estaAprovado(discordId)) {
+            return interaction.reply({
+                content:
+                    'Você precisa ter a **Whitelist aprovada** antes de registrar um personagem.\n' +
+                    `Vá em ${mençãoCanalWl()}, complete o formulário e aguarde a staff.`,
+                ephemeral: true
+            });
+        }
+
+        // 2. Verifica se o usuário está sob o tempo de espera do Anti-Spam
+        const tempoRestante = RegistroService.obterTempoRestanteCooldown(discordId);
         if (tempoRestante > 0) {
             const minutosRestantes = Math.ceil(tempoRestante / 60000);
             return interaction.reply({
@@ -14,14 +47,25 @@ module.exports = {
             });
         }
 
-        // 2. Verifica a elegibilidade comum (registros pendentes ou já cadastrados)
-        const podeRegistrar = await RegistroService.verificarElegibilidade(client, interaction.user.id);
-        
+        // 3. Elegibilidade: pendente, ativo, arquivado (saída) ou deletado (CK) bloqueiam
+        const podeRegistrar = await RegistroService.verificarElegibilidade(client, discordId);
+
         if (!podeRegistrar) {
-            return interaction.reply({ 
-                content: 'Você já possui um registro pendente ou ativo em nosso sistema.', 
-                ephemeral: true 
-            });
+            const existente = RegistroService.consultarRegistro({ discordId });
+            let msg = 'Você já possui um registro pendente ou ativo em nosso sistema.';
+            if (existente?.isArquivado) {
+                const st = existente.registro.status;
+                if (st === 'DELETADO') {
+                    msg =
+                        'Seu personagem está **deletado/arquivado** (CK/reset). ' +
+                        'A staff precisa usar `/devolver_registro` antes de você poder registrar de novo.';
+                } else {
+                    msg =
+                        'Seu personagem está **arquivado** (saída do servidor). ' +
+                        'Reentre no servidor para restauração automática, ou peça à staff `/devolver_registro`.';
+                }
+            }
+            return interaction.reply({ content: msg, ephemeral: true });
         }
 
         const modal = new ModalBuilder()

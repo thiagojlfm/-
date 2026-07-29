@@ -50,7 +50,10 @@ module.exports = {
         const mencaoMatch = alvoInput.match(/^<@!?(\d+)>$/);
         const alvoResolvido = mencaoMatch ? mencaoMatch[1] : alvoInput.trim();
 
-        const nomePersonagem = interaction.options.getString('nome_personagem');
+        const nomePersonagemRaw = interaction.options.getString('nome_personagem');
+        const nomePersonagem = nomePersonagemRaw
+            ? RegistroService.formatarNomePersonagem(nomePersonagemRaw)
+            : null;
         const idadeRaw = interaction.options.getString('idade');
         const localNascimento = interaction.options.getString('local_nascimento');
         const nickRoblox = interaction.options.getString('nick_roblox');
@@ -95,7 +98,7 @@ module.exports = {
             if (nomePersonagem) {
                 const membro = await interaction.guild.members.fetch(registroAtualizado.discordId).catch(() => null);
                 if (membro) {
-                    await membro.setNickname(nomePersonagem).catch(err =>
+                    await membro.setNickname(registroAtualizado.nomePersonagem).catch(err =>
                         console.log('[AVISO] Não foi possível atualizar o apelido:', err.message)
                     );
                 }
@@ -103,7 +106,7 @@ module.exports = {
 
             // Monta lista de alterações feitas para exibição
             const alteracoes = [];
-            if (nomePersonagem) alteracoes.push(`<:rpc2:1500318320853782669> **Nome do personagem:** \`${nomePersonagem}\``);
+            if (nomePersonagem) alteracoes.push(`<:rpc2:1500318320853782669> **Nome do personagem:** \`${registroAtualizado.nomePersonagem}\``);
             if (idade !== null) alteracoes.push(`<:info:1373983629746638938> **Idade:** \`${idade} anos\``);
             if (localNascimento) alteracoes.push(`<:info:1373983629746638938> **Local de nascimento:** \`${localNascimento}\``);
             if (nickRoblox) alteracoes.push(`<:valdotsmall:1392947288879665244> **Nick Roblox:** \`${nickRoblox}\``);

@@ -5,7 +5,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
-
+.ai-jail
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
@@ -70,6 +70,10 @@ web_modules/
 .env.*
 !.env.example
 CLAUDE*
+.ai-jail
+# Dados locais do bot (registros / whitelist)
+src/data/*.json
+!src/data/perguntas_wl.js
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

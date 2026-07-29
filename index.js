@@ -16,6 +16,7 @@ const client = new Client({
 client.commands = new Map();
 client.buttons = new Map();
 client.modals = new Map();
+client.selects = new Map();
 
 // Garante o caminho absoluto correto, lidando caso o processo seja iniciado fora ou dentro de 'src'
 const baseDir = __dirname.endsWith('src') ? __dirname : path.join(__dirname, 'src');
@@ -71,6 +72,21 @@ if (fs.existsSync(modalsPath)) {
     console.log(`[ERRO] Caminho de modals não encontrado: ${modalsPath}`);
 }
 
+// --- CARREGADOR DE SELECT MENUS ---
+const selectsPath = path.join(baseDir, 'components', 'selects');
+console.log(`[INFO] Procurando select menus em: ${selectsPath}`);
+
+if (fs.existsSync(selectsPath)) {
+    const selectFiles = fs.readdirSync(selectsPath).filter(file => file.endsWith('.js'));
+    for (const file of selectFiles) {
+        const select = require(path.join(selectsPath, file));
+        client.selects.set(select.customId, select);
+        console.log(`[SUCESSO] Select carregado: ${select.customId}`);
+    }
+} else {
+    console.log(`[AVISO] Caminho de select menus não encontrado: ${selectsPath}`);
+}
+
 // --- ROTEADOR E TRATADOR DE INTERAÇÕES ---
 client.on('interactionCreate', async interaction => {
 
@@ -91,20 +107,31 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 2. Componentes de Botão (Buttons)
-    if (interaction.isButton()) {
-        let button = client.buttons.get(interaction.customId);
-        let extractedId = null;
+    // Resolve handler por customId exato ou pelo prefixo dinâmico mais longo (ex: btn_aprovar_wl_ antes de btn_aprovar_)
+    const resolvePrefixed = (collection, customId) => {
+        const exact = collection.get(customId);
+        if (exact) return { handler: exact, extractedId: null };
 
-        if (!button) {
-            for (const [key, value] of client.buttons.entries()) {
-                if (key.endsWith('_') && interaction.customId.startsWith(key)) {
-                    button = value;
-                    extractedId = interaction.customId.replace(key, '');
-                    break;
+        let bestKey = null;
+        let bestHandler = null;
+        for (const [key, value] of collection.entries()) {
+            if (key.endsWith('_') && customId.startsWith(key)) {
+                if (!bestKey || key.length > bestKey.length) {
+                    bestKey = key;
+                    bestHandler = value;
                 }
             }
         }
+        if (!bestHandler) return { handler: null, extractedId: null };
+        return {
+            handler: bestHandler,
+            extractedId: customId.slice(bestKey.length)
+        };
+    };
+
+    // 2. Componentes de Botão (Buttons)
+    if (interaction.isButton()) {
+        const { handler: button, extractedId } = resolvePrefixed(client.buttons, interaction.customId);
 
         if (!button) {
             console.log(`[AVISO] Botão pressionado mas sem lógica registrada: ${interaction.customId}`);
@@ -120,18 +147,7 @@ client.on('interactionCreate', async interaction => {
 
     // 3. Envios de Formulários (Modals)
     if (interaction.isModalSubmit()) {
-        let modal = client.modals.get(interaction.customId);
-        let extractedId = null;
-
-        if (!modal) {
-            for (const [key, value] of client.modals.entries()) {
-                if (key.endsWith('_') && interaction.customId.startsWith(key)) {
-                    modal = value;
-                    extractedId = interaction.customId.replace(key, '');
-                    break;
-                }
-            }
-        }
+        const { handler: modal, extractedId } = resolvePrefixed(client.modals, interaction.customId);
 
         if (!modal) {
             console.log(`[AVISO] Modal enviado mas sem lógica registrada: ${interaction.customId}`);
@@ -144,52 +160,111 @@ client.on('interactionCreate', async interaction => {
             console.error(`[ERRO] Falha ao processar modal ${interaction.customId}:`, error);
         }
     }
+
+    // 4. Select Menus
+    if (interaction.isAnySelectMenu()) {
+        const { handler: select, extractedId } = resolvePrefixed(client.selects, interaction.customId);
+
+        if (!select) {
+            console.log(`[AVISO] Select acionado mas sem lógica registrada: ${interaction.customId}`);
+            return;
+        }
+
+        try {
+            await select.execute(interaction, client, extractedId);
+        } catch (error) {
+            console.error(`[ERRO] Falha ao processar select ${interaction.customId}:`, error);
+        }
+    }
 });
 
 // Evento disparado quando o bot se conecta com sucesso
 client.once('clientReady', async () => {
     console.log(`\n[BOT] Online com sucesso como: ${client.user.tag}`);
+
+    // Registra/atualiza slash commands automaticamente no boot (guild — propaga na hora)
+    try {
+        const commandsData = [...client.commands.values()].map((cmd) => cmd.data.toJSON());
+        const guildId = process.env.GUILD_ID;
+
+        if (!guildId) {
+            console.warn('[DEPLOY] GUILD_ID não definido nas envs — slash commands não foram registrados.');
+        } else if (commandsData.length === 0) {
+            console.warn('[DEPLOY] Nenhum comando carregado para registrar.');
+        } else {
+            console.log(`[DEPLOY] Registrando ${commandsData.length} comando(s) na guild ${guildId}...`);
+            const registrados = await client.application.commands.set(commandsData, guildId);
+            console.log(`[DEPLOY] ${registrados.size} comando(s) registrado(s) com sucesso.`);
+        }
+    } catch (error) {
+        console.error('[DEPLOY] Falha ao registrar slash commands no boot:', error);
+    }
+
     const RegistroService = require('./src/services/RegistroService');
     await RegistroService.sincronizarBackups(client);
 });
 
-// Evento disparado automaticamente toda vez que um membro sai do servidor
-// Evento disparado automaticamente toda vez que um membro sai do servidor
+// Entrada: boas-vindas (DM) + auto-restore de registro (só saída; CK exige /devolver_registro)
+client.on('guildMemberAdd', async member => {
+    try {
+        const { enviarBoasVindasDm } = require('./src/services/BoasVindasService');
+        const resultado = await enviarBoasVindasDm(member.user);
+        if (resultado.ok) {
+            console.log(`[BOAS-VINDAS] DM (fallback) enviada para ${member.user.tag} (${member.id}).`);
+        } else {
+            console.warn(
+                `[BOAS-VINDAS] Não foi possível contatar ${member.user.tag} (${member.id}): ${resultado.erro}`
+            );
+        }
+    } catch (error) {
+        console.error(`[ERRO BOAS-VINDAS] Falha ao enviar boas-vindas para ${member.id}:`, error);
+    }
+
+    try {
+        const RegistroService = require('./src/services/RegistroService');
+        await RegistroService.handleMemberJoin(member, client);
+    } catch (error) {
+        console.error(`[ERRO AUTOMAÇÃO] Falha ao restaurar registro na entrada de ${member.id}:`, error);
+    }
+});
+
+// Saída: arquiva registro (status) + limpa whitelist
 client.on('guildMemberRemove', async member => {
     try {
-        // Ajustado o caminho para buscar de dentro da pasta 'src'
         const RegistroService = require('./src/services/RegistroService');
-        
-        const registroRemovido = await RegistroService.deletarRegistro(member.id);
+        const WhitelistService = require('./src/services/WhitelistService');
+        const { ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
+        const canalLogs = client.channels.cache.get(process.env.LOGS_CHANNEL_ID);
 
-        if (registroRemovido) {
-            console.log(`[AUTOMAÇÃO] Membro ${member.user.tag} saiu do servidor. Registro do personagem ${registroRemovido.nomePersonagem} deletado.`);
+        await RegistroService.handleMemberLeave(member, client);
 
-            const canalLogs = client.channels.cache.get(process.env.LOGS_CHANNEL_ID);
+        const wlRemovida = await WhitelistService.deletarPorDiscordId(member.id);
+        if (wlRemovida) {
+            console.log(`[AUTOMAÇÃO] Membro ${member.user.tag} saiu. Whitelist removida (status: ${wlRemovida.status}).`);
+
             if (canalLogs) {
-                const { ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
-                
                 const logContainer = new ContainerBuilder()
                     .setAccentColor(0xFF59A2)
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
-                            '# [LOG AUTOMAÇÃO] Registro Removido (Saída)\n\n' +
-                            `**Jogador:** ${member.user.tag} (<@${member.id}>)\n` +
-                            `**Roblox:** \`${registroRemovido.nickRoblox}\` (\`@${registroRemovido.userRoblox}\`)\n` +
-                            `**Personagem:** \`${registroRemovido.nomePersonagem}\`\n` +
-                            `**SSN:** \`${registroRemovido.ssn}\`\n\n` +
-                            '*O registro foi deletado automaticamente porque o usuário saiu do servidor.*'
+                            '# [LOG AUTOMAÇÃO] Whitelist Removida (Saída)\n\n' +
+                                `**Jogador:** ${member.user.tag} (<@${member.id}>)\n` +
+                                `**Roblox:** \`${wlRemovida.answers?.userRoblox || '-'}\`\n` +
+                                `**Status anterior:** \`${wlRemovida.status}\`\n\n` +
+                                '*A Whitelist foi removida automaticamente porque o usuário saiu do servidor. Ao voltar, deverá refazer.*'
                         )
                     );
 
-                await canalLogs.send({
-                    components: [logContainer],
-                    flags: [MessageFlags.IsComponentsV2]
-                }).catch(() => null);
+                await canalLogs
+                    .send({
+                        components: [logContainer],
+                        flags: [MessageFlags.IsComponentsV2]
+                    })
+                    .catch(() => null);
             }
         }
     } catch (error) {
-        console.error(`[ERRO AUTOMAÇÃO] Falha ao remover registro na saída de ${member.id}:`, error);
+        console.error(`[ERRO AUTOMAÇÃO] Falha ao limpar dados na saída de ${member.id}:`, error);
     }
 });
 client.login(process.env.DISCORD_TOKEN);
