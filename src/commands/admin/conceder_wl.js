@@ -68,10 +68,6 @@ module.exports = {
             }
 
             // Notifica o jogador por DM
-            const canalRegistro = process.env.REGISTRO_CHANNEL_ID
-                ? `<#${process.env.REGISTRO_CHANNEL_ID}>`
-                : '#registro-cidadao';
-
             const dmContainer = new ContainerBuilder()
                 .setAccentColor(0x75F5E9)
                 .addTextDisplayComponents(
@@ -86,8 +82,9 @@ module.exports = {
                     new TextDisplayBuilder().setContent(
                         `> <:valdotsmall:1392947288879665244> Olá, <@${discordId}>!\n` +
                         '> Sua **Whitelist** no **GVRPNL** foi concedida pela staff.\n\n' +
-                        `> **Próximo passo:** acesse ${canalRegistro}, clique em **Registrar Personagem** e preencha o formulário.\n` +
-                        '> Após aprovado pela staff, você estará totalmente liberado no servidor.'
+                        '> **Próximo passo:** acesse o canal de registro pelo link abaixo, clique em **Registrar Personagem** e preencha o formulário.\n' +
+                        '> Após aprovado pela staff, você estará totalmente liberado no servidor.\n\n' +
+                        '> https://discord.com/channels/992935229641719960/1526963200124387569'
                     )
                 );
 
