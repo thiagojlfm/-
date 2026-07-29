@@ -28,6 +28,9 @@ const apiServer = http.createServer((req, res) => {
             const wlAprovada = WhitelistService.estaAprovado(discordId);
             const wlPendente = !!WhitelistService.buscarPendentePorDiscordId(discordId);
             const registro = RegistroService.buscarAtivo(discordId);
+            const totalRegistros = RegistroService._lerTodos().length;
+
+            console.log(`[API] /registro/discord/${discordId} → wl=${wlAprovada} registro=${registro?.nomePersonagem || 'null'} total_no_json=${totalRegistros}`);
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             return res.end(JSON.stringify({
