@@ -2,6 +2,68 @@ require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+
+// --- SERVIDOR HTTP (API para bot 911) ---
+const API_PORT = process.env.PORT || 8080;
+const API_TOKEN = process.env.WL_API_TOKEN || '';
+
+const apiServer = http.createServer((req, res) => {
+    // Autenticação por token
+    const auth = req.headers['authorization'] || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : auth;
+    if (API_TOKEN && token !== API_TOKEN) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ error: 'Unauthorized' }));
+    }
+
+    // GET /registro/discord/:discordId
+    const match = req.url.match(/^\/registro\/discord\/(\d+)$/);
+    if (req.method === 'GET' && match) {
+        const discordId = match[1];
+        try {
+            const WhitelistService = require('./src/services/WhitelistService');
+            const RegistroService = require('./src/services/RegistroService');
+
+            const wlAprovada = WhitelistService.estaAprovado(discordId);
+            const wlPendente = !!WhitelistService.buscarPendentePorDiscordId(discordId);
+            const registro = RegistroService.buscarAtivo(discordId);
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({
+                discordId,
+                whitelist: {
+                    aprovada: wlAprovada,
+                    pendente: wlPendente
+                },
+                registro: registro ? {
+                    nomePersonagem: registro.nomePersonagem,
+                    ssn: registro.ssn,
+                    nickRoblox: registro.nickRoblox,
+                    userRoblox: registro.userRoblox,
+                    idade: registro.idade,
+                    localNascimento: registro.localNascimento
+                } : null
+            }));
+        } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'Internal error', detail: err.message }));
+        }
+    }
+
+    // GET /health
+    if (req.method === 'GET' && req.url === '/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ ok: true }));
+    }
+
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Not found' }));
+});
+
+apiServer.listen(API_PORT, () => {
+    console.log(`[API] Servidor HTTP rodando na porta ${API_PORT}`);
+});
 
 const client = new Client({
     intents: [
