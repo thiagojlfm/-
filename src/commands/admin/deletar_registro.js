@@ -6,6 +6,12 @@ module.exports = {
         .setName('deletar_registro')
         .setDescription('Remove o registro ativo (CK/reset). Fica arquivado e pode ser devolvido com /devolver_registro.')
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+        .addStringOption(option =>
+            option
+                .setName('motivo')
+                .setDescription('O motivo da exclusão do registro (ex: CK, banimento, reset).')
+                .setRequired(true)
+        )
         .addUserOption(option =>
             option
                 .setName('usuario')
@@ -17,12 +23,6 @@ module.exports = {
                 .setName('ssn')
                 .setDescription('SSN do personagem que deseja deletar.')
                 .setRequired(false)
-        )
-        .addStringOption(option =>
-            option
-                .setName('motivo')
-                .setDescription('O motivo da exclusão do registro (ex: CK, banimento, reset).')
-                .setRequired(true)
         ),
 
     async execute(interaction, client) {
