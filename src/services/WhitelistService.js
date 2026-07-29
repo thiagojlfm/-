@@ -14,7 +14,7 @@ const {
     StringSelectMenuBuilder,
     StringSelectMenuOptionBuilder
 } = require('discord.js');
-const perguntasMc = require('../data/perguntas_wl');
+const perguntasMc = require('../config/perguntas_wl');
 const { PERGUNTAS_ABERTAS } = require('../utils/wlModals');
 const { STAFF_WL_PANEL_CHANNEL_ID } = require('../config/channels');
 
