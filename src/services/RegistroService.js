@@ -399,8 +399,10 @@ class RegistroService {
     }
 
     /**
-     * Soft-delete (CK / reset staff): status DELETADO no mesmo JSON.
-     * Não apaga o personagem. Só `/devolver_registro` reativa (não auto-restaura na entrada).
+     * Hard-delete (CK / reset staff): remove o registro de vez do JSON.
+     * Libera o discordId/ssn na hora (novo formulário ou /criar_registro funcionam em seguida).
+     * Não fica arquivado — quem chama (comando) deve mandar o backup pro canal de logs
+     * ANTES de chamar isso, se quiser manter histórico recuperável manualmente.
      * @param {string} discordIdOrSsn
      * @param {{ motivo?: string, staffId?: string }} [opts]
      */
@@ -412,17 +414,15 @@ class RegistroService {
             );
             if (index === -1) return null;
 
-            const atualizado = {
+            const removido = {
                 ...todos[index],
-                status: STATUS.DELETADO,
-                motivoArquivo: 'DELETADO_STAFF',
                 motivoDetalhe: opts.motivo || null,
                 deletadoPor: opts.staffId || null,
-                arquivadoEm: new Date().toISOString()
+                deletadoEm: new Date().toISOString()
             };
-            todos[index] = atualizado;
-            this._salvarTodos(todos);
-            return atualizado;
+            todos.splice(index, 1);
+            this._salvarTodos(todos, { allowEmpty: todos.length === 0 });
+            return removido;
         } catch (error) {
             console.error('[ERRO] Falha ao deletar registro do JSON:', error);
             throw error;

@@ -4,7 +4,7 @@ const RegistroService = require('../../services/RegistroService');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('deletar_registro')
-        .setDescription('Remove o registro ativo (CK/reset). Fica arquivado e pode ser devolvido com /devolver_registro.')
+        .setDescription('Apaga o registro ativo pra sempre (CK/reset) e libera o usuário pra registrar de novo.')
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
         .addStringOption(option =>
             option
@@ -41,6 +41,19 @@ module.exports = {
         const alvoResolvido = usuario?.id || ssn;
 
         try {
+            const registroPreDelete = RegistroService.consultarRegistro(
+                usuario ? { discordId: usuario.id } : { ssn }
+            )?.registro;
+
+            // Manda o backup ANTES de apagar de vez, pra manter histórico recuperável manualmente.
+            if (registroPreDelete) {
+                await RegistroService._enviarBackupJson(
+                    client,
+                    `delete/CK \`${registroPreDelete.nomePersonagem}\` (motivo: ${motivo})`,
+                    registroPreDelete
+                ).catch(() => null);
+            }
+
             const registroDeletado = await RegistroService.deletarRegistro(alvoResolvido, {
                 motivo,
                 staffId: interaction.user.id
@@ -63,10 +76,9 @@ module.exports = {
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
                             '# Registro Resetado\n\n' +
-                            `Seu personagem **${registroDeletado.nomePersonagem}** foi removido do sistema ativo.\n` +
+                            `Seu personagem **${registroDeletado.nomePersonagem}** foi removido do sistema.\n` +
                             `**Motivo:** ${motivo}\n\n` +
-                            'O cadastro ficou **arquivado**. Para criar outro personagem, a staff precisa **devolver** este registro ou liberar o slot. ' +
-                            'Não é possível enviar um novo formulário enquanto este personagem estiver deletado.'
+                            'Você já pode enviar um novo formulário de registro quando quiser.'
                         )
                     );
 
@@ -89,7 +101,7 @@ module.exports = {
                             `**SSN:** \`${registroDeletado.ssn}\`\n` +
                             `**Removido por:** <@${interaction.user.id}>\n` +
                             `**Motivo:** \`${motivo}\`\n\n` +
-                            '*Registro com status DELETADO (não apagado de vez). Staff pode devolver com `/devolver_registro`.*'
+                            '*Apagado de vez do sistema — slot liberado. Backup enviado acima; pra restaurar, use `/criar_registro` com os dados do backup.*'
                         )
                     );
 
@@ -99,17 +111,10 @@ module.exports = {
                 }).catch(() => null);
             }
 
-            await RegistroService._enviarBackupJson(
-                client,
-                `delete/CK \`${registroDeletado.nomePersonagem}\``,
-                registroDeletado
-            ).catch(() => null);
-
             await interaction.editReply({
                 content:
-                    `O registro de **${registroDeletado.nomePersonagem}** foi removido e os cargos atualizados.\n` +
-                    `Ele ficou **arquivado** (SSN \`${registroDeletado.ssn}\`, status DELETADO) e pode ser devolvido com \`/devolver_registro\`.\n` +
-                    `O jogador **não** pode abrir formulário novo até a staff devolver este cadastro.`
+                    `O registro de **${registroDeletado.nomePersonagem}** foi apagado de vez e os cargos atualizados.\n` +
+                    `Backup salvo no canal de logs (SSN \`${registroDeletado.ssn}\`). O jogador já pode fazer um novo registro.`
             }).catch(() => null);
 
         } catch (error) {
